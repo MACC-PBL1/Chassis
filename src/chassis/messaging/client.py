@@ -94,25 +94,33 @@ class RabbitMQBaseClient:
         # Set QoS (prefetch count)
         self._channel.basic_qos(prefetch_count=self._prefetch_count)
         
-        # Declare queue (idempotent)
-        self._channel.queue_declare(
-            queue=self._queue, 
-            durable=True,
-            auto_delete=self._auto_delete,
-        )
+        # Solo declarar cola si existe y si declare_queue=True
+        # Usar getattr para backwards compatibility
+        should_declare_queue = getattr(self, '_declare_queue', True)
+        
+        if should_declare_queue and self._queue:
+            # Declare queue (idempotent)
+            self._channel.queue_declare(
+                queue=self._queue, 
+                durable=True,
+                auto_delete=self._auto_delete,
+            )
 
-        # If using custom exchange, bind queue to exchange
+        # If using custom exchange, declare it first
         if not self._is_default_exchange():
             self._channel.exchange_declare(
                 exchange=self._exchange,
                 exchange_type=self._exchange_type,
                 durable=True
             )
-            self._channel.queue_bind(
-                exchange=self._exchange,
-                queue=self._queue,
-                routing_key=self._routing_key
-            )
+            
+            # Solo hacer bind si declaramos la cola
+            if should_declare_queue and self._queue:
+                self._channel.queue_bind(
+                    exchange=self._exchange,
+                    queue=self._queue,
+                    routing_key=self._routing_key
+                )
 
     def _close(self) -> None:
         """Close connection"""

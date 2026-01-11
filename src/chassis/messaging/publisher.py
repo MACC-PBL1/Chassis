@@ -17,7 +17,9 @@ class RabbitMQPublisher(RabbitMQBaseClient):
         exchange_type: str = "direct",
         routing_key: Optional[str] = None,
         auto_delete_queue: bool = False,
+        declare_queue: bool = True, 
     ) -> None:
+        self._declare_queue = declare_queue
         super().__init__(
             queue=queue, 
             rabbitmq_config=rabbitmq_config,
@@ -95,3 +97,17 @@ class RabbitMQPublisher(RabbitMQBaseClient):
 #     exchange="notifications",
 #     exchange_type="fanout"
 # )
+
+# Publish-only mode (no queue declaration)
+# Use this when you only want to publish to an exchange
+# and let consumers declare their own queues
+# publisher = RabbitMQPublisher(
+#     queue="",  # Empty string is fine when declare_queue=False
+#     rabbitmq_config=config,
+#     exchange="cmd",
+#     exchange_type="topic",
+#     routing_key="payment.reserve",
+#     declare_queue=False  # ← Don't create any queue
+# )
+# with publisher:
+#     publisher.publish({"order_id": 123})
