@@ -11,6 +11,7 @@ from .utils import (
     get_element_statement_result,
     get_list,
     get_list_statement_result,
+    update_elements_statement_result,
 )
 from typing import (
     List,
@@ -28,4 +29,5 @@ __all__: List[LiteralString] = [
     "get_list",
     "get_list_statement_result",
     "SessionLocal",
+    "update_elements_statement_result",
 ]

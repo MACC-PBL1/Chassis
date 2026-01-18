@@ -67,8 +67,6 @@ class RabbitMQListener(RabbitMQBaseClient):
                     body=body,
                     content_type=properties.content_type,
                 )
-                if self._queue is None:
-                    raise RuntimeError("Listener must have a queue defined")
                 callback(message, self._queue)
                 if not auto_ack:
                     ch.basic_ack(delivery_tag=method.delivery_tag)

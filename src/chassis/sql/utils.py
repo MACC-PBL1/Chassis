@@ -1,11 +1,14 @@
-from sqlalchemy import Select
+from sqlalchemy import (
+    Select, 
+    Update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import (
     List,
     Optional,
     Tuple,
-    Type, 
+    Type,
     TypeVar
 )
 
@@ -51,3 +54,10 @@ async def delete_element_by_id(
         await db.delete(element)
         await db.commit()
         await db.flush()
+
+async def update_elements_statement_result(
+    db: AsyncSession,
+    stmt: Update
+) -> None:
+    _ = await db.execute(stmt)
+    await db.commit()
