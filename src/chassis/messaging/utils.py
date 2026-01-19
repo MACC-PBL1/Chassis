@@ -56,7 +56,18 @@ def _process_message(message: MessageType, queue: str):
                 loop = asyncio.get_running_loop()
                 loop.create_task(handler(message))
             except RuntimeError:
-                asyncio.run(handler(message))
+                # No running loop - create a new one with proper context
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(handler(message))
+                finally:
+                    # Clean up the loop after the handler completes
+                    try:
+                        loop.run_until_complete(loop.shutdown_asyncgens())
+                    finally:
+                        loop.close()
+                        asyncio.set_event_loop(None)
         else:
             handler(message)
     except Exception as e:

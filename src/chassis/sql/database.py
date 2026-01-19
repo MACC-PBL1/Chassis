@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine, 
 )
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
 import os
 
 SQLALCHEMY_DATABASE_URL = os.getenv(
@@ -15,9 +16,7 @@ Engine = create_async_engine(
     # connect_args={"check_same_thread": False},
     echo=False,
     pool_pre_ping=True,
-    pool_recycle=3600,
-    pool_size=5,
-    max_overflow=10
+    poolclass=NullPool,
 )
 
 SessionLocal = async_sessionmaker(
