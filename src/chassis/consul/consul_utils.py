@@ -7,6 +7,102 @@ from typing import Optional
 import random
 import base64
 
+import requests
+import socket
+from typing import (
+    Any,
+    Optional,
+)
+
+import requests
+import socket
+import random
+from typing import Optional
+
+# class ConsulClient:
+#     def __init__(self, host: str = "localhost", port: int = 8500):
+#         self.base_url = f"http://{host}:{port}/v1"
+    
+#     def register(
+#         self,
+#         name: str,
+#         service_id: Optional[str] = None,
+#         address: Optional[str] = None,
+#         port: Optional[int] = None,
+#         tags: Optional[list] = None,
+#         check_http: Optional[str] = None,
+#         check_interval: str = "10s"
+#     ):
+#         """Register a service with Consul"""
+#         service_id = service_id or f"{name}-{socket.gethostname()}"
+#         address = address or socket.gethostbyname(socket.gethostname())
+        
+#         payload = {
+#             "ID": service_id,
+#             "Name": name,
+#             "Address": address,
+#         }
+        
+#         if port:
+#             payload["Port"] = port
+#         if tags:
+#             payload["Tags"] = tags
+#         if check_http:
+#             payload["Check"] = {
+#                 "HTTP": check_http,
+#                 "Interval": check_interval
+#             }
+        
+#         response = requests.put(
+#             f"{self.base_url}/agent/service/register",
+#             json=payload
+#         )
+#         response.raise_for_status()
+#         return service_id
+    
+#     def deregister(self, service_id: str):
+#         """Deregister a service from Consul"""
+#         response = requests.put(
+#             f"{self.base_url}/agent/service/deregister/{service_id}"
+#         )
+#         response.raise_for_status()
+    
+#     def get_service_url(self, name: str) -> Optional[str]:
+#         """Get a random healthy service instance URL"""
+#         response = requests.get(
+#             f"{self.base_url}/health/service/{name}",
+#             params={"passing": "true"}
+#         )
+#         response.raise_for_status()
+        
+#         services = response.json()
+#         if not services:
+#             return None
+        
+#         service = random.choice(services)["Service"]
+#         tags = service.get("Tags", [])
+#         scheme = "https" if "tls" in tags or "https" in tags else "http"
+        
+#         return f"{scheme}://{service['Address']}:{service['Port']}"
+    
+# # Initialize client
+# client = ConsulClient(host="localhost", port=8500)
+
+# # Register a service
+# service_id = client.register(
+#     name="my-api",
+#     port=8080,
+#     tags=["api", "v1"],
+#     check_http="http://localhost:8080/health"
+# )
+
+# # Get a random instance URL
+# url = client.get_service_url("my-api")
+# print(url)  # http://192.168.1.10:8080
+
+# # Deregister when shutting down
+# client.deregister(service_id)
+
 class ConsulClient:
     def __init__(
         self, 
@@ -39,7 +135,8 @@ class ConsulClient:
                     "HTTP": f"http{"s" if port == 443 else ""}://{ip_address}:{port}{health_path}",
                     "Interval": "10s",
                     "DeregisterCriticalServiceAfter": "1m",
-                    "Status": "passing"
+                    "Status": "passing",
+                    "TLSSkipVerify": "true"
                 }
             }
 
