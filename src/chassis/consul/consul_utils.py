@@ -136,7 +136,7 @@ class ConsulClient:
                     "Interval": "10s",
                     "DeregisterCriticalServiceAfter": "1m",
                     "Status": "passing",
-                    "TLSSkipVerify": "true"
+                    "TLSSkipVerify": True
                 }
             }
 
