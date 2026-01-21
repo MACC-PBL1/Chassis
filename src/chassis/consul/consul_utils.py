@@ -1,14 +1,24 @@
 from typing import Optional
-import consul
+import requests
 import os
+import socket
+import logging
+import atexit
+import random
 
 class ConsulClient:
-    def __init__(self, consul_host: str, consul_port: int):
+    def __init__(self, consul_host: str, consul_port: int, logger: Optional[logging.Logger] = None, timeout: int = 2):
         """
         Args:
             consul_host: Consul server address (EC2_2 private IP)
+            consul_port: Consul server port
+            logger: Optional logger instance
+            timeout: Request timeout in seconds
         """
-        self.consul = consul.Consul(host=consul_host, port=consul_port)
+        self._logger = logger or logging.getLogger(__name__)
+        self.consul_host = consul_host
+        self.consul_port = consul_port
+        self.timeout = timeout
         self.service_id = None
         
     def register_service(
@@ -25,30 +35,51 @@ class ConsulClient:
             service_name: Microservice name
             ec2_address: This EC2's IP/hostname
             service_port: External port
-            use_https: Whether HAProxy uses HTTPS
+            health_check_interval: Health check interval
         """
-        # Unique ID per instance
-        self.service_id = f"{service_name}-{ec2_address.replace('.', '-')}"
-        
-        protocol = "http"
-        
-        self.consul.agent.service.register(
-            name=service_name,
-            service_id=self.service_id,
-            address=ec2_address,
-            port=service_port,
-            check={
-                "http": f"{protocol}://{ec2_address}:{service_port}/{service_name}/health",
-                "interval": health_check_interval,
-                "timeout": "5s",
-                "tls_skip_verify": True
+        try:
+            # Unique ID per instance
+            self.service_id = f"{service_name}-{ec2_address.replace('.', '-')}"
+            
+            protocol = "https" if service_port == 443 else "http"
+            
+            payload = {
+                "ID": self.service_id,
+                "Name": service_name,
+                "Address": ec2_address,
+                "Port": service_port,
+                "Check": {
+                    "HTTP": f"{protocol}://{ec2_address}:{service_port}/{service_name}/health",
+                    "Interval": health_check_interval,
+                    "Timeout": "5s",
+                    "Status": "passing",
+                    "TLSSkipVerify": True
+                }
             }
-        )
+            
+            url = f"http://{self.consul_host}:{self.consul_port}/v1/agent/service/register"
+            res = requests.put(url, json=payload, timeout=self.timeout)
+            
+            if res.status_code == 200:
+                self._logger.info(f"[LOG:CHASSIS:CONSUL] - Service '{service_name}' registered successfully as '{self.service_id}'")
+                atexit.register(self.deregister_service)
+            else:
+                self._logger.error(f"[LOG:CHASSIS:CONSUL] - Failed to register: Reason={res.text}", exc_info=True)
+                
+        except Exception as e:
+            self._logger.error(f"[LOG:CHASSIS:CONSUL] - Connection failed: Reason={e}", exc_info=True)
                 
     def deregister_service(self) -> None:
         """Deregister on shutdown."""
-        if self.service_id:
-            self.consul.agent.service.deregister(self.service_id)
+        if not self.service_id:
+            return
+            
+        try:
+            url = f"http://{self.consul_host}:{self.consul_port}/v1/agent/service/deregister/{self.service_id}"
+            requests.put(url, timeout=self.timeout)
+            self._logger.info(f"[LOG:CHASSIS:CONSUL] - Service '{self.service_id}' deregistered.")
+        except Exception as e:
+            self._logger.warning(f"[LOG:CHASSIS:CONSUL] - Error during deregistration: Reason={e}", exc_info=True)
     
     def discover_service(self, service_name: str) -> Optional[tuple[str, int]]:
         """
@@ -57,36 +88,30 @@ class ConsulClient:
         Returns:
             Tuple of (address, port) or None if no healthy instances
         """
-        import random
-        
-        _, services = self.consul.health.service(service_name, passing=True)
-        if not services:
+        try:
+            url = f"http://{self.consul_host}:{self.consul_port}/v1/health/service/{service_name}"
+            res = requests.get(url, params={"passing": "true"}, timeout=self.timeout)
+            
+            if res.status_code == 200:
+                instances = res.json()
+                if not instances:
+                    self._logger.warning(f"[LOG:CHASSIS:CONSUL] - No instances found for '{service_name}'")
+                    return None
+
+                target = random.choice(instances)
+                service_address = target["Service"]["Address"]
+                service_port = target["Service"]["Port"]
+                
+                return service_address, service_port
+            else:
+                self._logger.error(f"[LOG:CHASSIS:CONSUL] - Error finding service: {res.text}")
+                return None
+                
+        except Exception as e:
+            self._logger.error(f"[LOG:CHASSIS:CONSUL] - Discovery failed: Reason={e}", exc_info=True)
             return None
-        
-        service = random.choice(services)
-        return service['Service']['Address'], service['Service']['Port']
 
 CONSUL_CLIENT = ConsulClient(
     consul_host=os.getenv("CONSUL_HOST", "localhost"),
     consul_port=int(os.getenv("CONSUL_PORT", 8500)),
 )
-# Usage
-# if __name__ == "__main__":
-#     client = ConsulClient(consul_host=os.getenv("CONSUL_HOST"))  # EC2_2 IP
-    
-#     SERVICE_NAME = os.getenv("SERVICE_NAME", "my-microservice")
-#     EC2_ADDRESS = os.getenv("EC2_ADDRESS")  # This EC2's IP/hostname
-    
-#     try:
-#         client.register_service(
-#             service_name=SERVICE_NAME,
-#             ec2_address=EC2_ADDRESS,
-#             haproxy_port=443
-#         )
-        
-#         # Discover microservice2 - returns [(ec2_3_ip, 443), ...]
-#         addr, port = client.discover_service("microservice2")
-#         response = requests.get(f"https://{addr}:{port}/api/endpoint", verify=False)
-        
-#     finally:
-#         client.deregister_service()
