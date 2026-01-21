@@ -25,7 +25,7 @@ class ConsulClient:
                 health_path = "/" + health_path
             
             hostname = socket.gethostname()
-            ip_address = socket.gethostbyname(hostname)
+            ip_address = os.getenv("HOST_IP", socket.gethostbyname(hostname))
             
             self._service_id = f"{service_name}-{hostname}"
 
