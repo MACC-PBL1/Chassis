@@ -1,6 +1,5 @@
 from typing import Optional
 import consul
-import logging
 
 class ConsulClient:
     def __init__(self, consul_host: str, consul_port: int):
