@@ -26,6 +26,7 @@ class ConsulClient:
             
             hostname = socket.gethostname()
             ip_address = os.getenv("HOST_IP", socket.gethostbyname(hostname))
+            port = int(os.getenv("HOST_PORT", port))
             
             self._service_id = f"{service_name}-{hostname}"
 
