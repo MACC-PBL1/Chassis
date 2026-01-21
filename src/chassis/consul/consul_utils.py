@@ -36,7 +36,7 @@ class ConsulClient:
                 "Address": ip_address,
                 "Port": port,
                 "Check": {
-                    "HTTP": f"http://{ip_address}:{port}{health_path}",
+                    "HTTP": f"http{"s" if port == 443 else ""}://{ip_address}:{port}{health_path}",
                     "Interval": "10s",
                     "DeregisterCriticalServiceAfter": "1m",
                     "Status": "passing"
