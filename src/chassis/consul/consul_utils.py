@@ -14,31 +14,30 @@ class ConsulClient:
         self, 
         service_name: str, 
         ec2_address: str, 
-        haproxy_port: int = 443, 
+        service_port: int = 443, 
         health_check_interval: str = "10s", 
-        use_https: bool = True
     ) -> None:
         """
         Register microservice using EC2's external address (where HAProxy is).
         
         Args:
             service_name: Microservice name
-            ec2_address: This EC2's IP/hostname (where HAProxy serves)
-            haproxy_port: HAProxy external port (443 for HTTPS)
+            ec2_address: This EC2's IP/hostname
+            service_port: External port
             use_https: Whether HAProxy uses HTTPS
         """
         # Unique ID per instance
         self.service_id = f"{service_name}-{ec2_address.replace('.', '-')}"
         
-        protocol = "https" if use_https else "http"
+        protocol = "http"
         
         self.consul.agent.service.register(
             name=service_name,
             service_id=self.service_id,
-            address=ec2_address,  # EC2 IP where HAProxy is accessible
-            port=haproxy_port,
+            address=ec2_address,
+            port=service_port,
             check={
-                "http": f"{protocol}://{ec2_address}:{haproxy_port}/health",
+                "http": f"{protocol}://{ec2_address}:{service_port}/{service_name}/health",
                 "interval": health_check_interval,
                 "timeout": "5s",
                 "tls_skip_verify": True
