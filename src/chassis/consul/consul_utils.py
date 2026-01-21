@@ -1,5 +1,6 @@
 from typing import Optional
 import consul
+import os
 
 class ConsulClient:
     def __init__(self, consul_host: str, consul_port: int):
@@ -65,7 +66,10 @@ class ConsulClient:
         service = random.choice(services)
         return service['Service']['Address'], service['Service']['Port']
 
-
+CONSUL_CLIENT = ConsulClient(
+    consul_host=os.getenv("CONSUL_HOST", "localhost"),
+    consul_port=int(os.getenv("CONSUL_PORT", 8500)),
+)
 # Usage
 # if __name__ == "__main__":
 #     client = ConsulClient(consul_host=os.getenv("CONSUL_HOST"))  # EC2_2 IP
