@@ -1,9 +1,7 @@
 from typing import Optional
 import requests
 import os
-import socket
 import logging
-import atexit
 import random
 
 class ConsulClient:
@@ -62,7 +60,6 @@ class ConsulClient:
             
             if res.status_code == 200:
                 self._logger.info(f"[LOG:CHASSIS:CONSUL] - Service '{service_name}' registered successfully as '{self.service_id}'")
-                atexit.register(self.deregister_service)
             else:
                 self._logger.error(f"[LOG:CHASSIS:CONSUL] - Failed to register: Reason={res.text}", exc_info=True)
                 
