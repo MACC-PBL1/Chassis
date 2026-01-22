@@ -99,7 +99,7 @@ class ConsulClient:
                     return None
 
                 target = random.choice(instances)
-                service_address = target["Service"]["Address"]
+                service_address = "http://" + target["Service"]["Address"]
                 service_port = target["Service"]["Port"]
                 
                 return service_address, service_port
